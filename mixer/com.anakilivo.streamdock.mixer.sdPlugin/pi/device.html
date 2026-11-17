@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="pi.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="pi.js"></script>
+  <script>
+    window.PI = {
+      defaults: { scope: "output", devices: [] },
+      render(s, devices) {
+        const available = devices.filter((d) => d[s.scope]);
+        const chosen = new Set(s.devices);
+
+        const toggle = (uid, on) => {
+          // Сохраняем порядок как в списке устройств.
+          const next = available.map((d) => d.uid).filter((u) => (u === uid ? on : chosen.has(u)));
+          saveSettings({ devices: next });
+        };
+
+        const list = el("div", { className: "list" }, available.map((d) =>
+          el("label", {}, [
+            el("input", { type: "checkbox", checked: chosen.has(d.uid), on: { change: (e) => toggle(d.uid, e.target.checked) } }),
+            d.name,
+          ])));
+
+        document.getElementById("app").replaceChildren(
+          row("Тип", scopeSelect()),
+          row("Устройства", available.length ? list : el("span", { className: "hint", textContent: "Загрузка…" })),
+          el("p", { className: "hint", textContent: "Ничего не отмечено — переключаются все устройства." }),
+        );
+      },
+    };
+  </script>
+</body>
+</html>

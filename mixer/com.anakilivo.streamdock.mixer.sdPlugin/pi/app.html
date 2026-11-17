@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="pi.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="pi.js"></script>
+  <script>
+    window.PI = {
+      defaults: { app: "", appName: "", step: 2, label: "" },
+      render(s, _devices, apps) {
+        // Не перерисовываем, пока пользователь печатает имя.
+        if (document.activeElement?.id === "label") return;
+
+        const appSelect = el("select", {
+          on: {
+            change: (e) => {
+              const chosen = apps.find((a) => a.id === e.target.value);
+              saveSettings({ app: e.target.value, appName: chosen?.name || "" });
+            },
+          },
+        }, [
+          el("option", { value: "", textContent: "— выберите —", selected: !s.app }),
+          ...apps.map((a) => el("option", {
+            value: a.id, textContent: a.playing ? `▶ ${a.name}` : a.name, selected: a.id === s.app,
+          })),
+        ]);
+        if (s.app && !apps.some((a) => a.id === s.app)) {
+          appSelect.append(el("option", { value: s.app, textContent: `${s.appName || s.app} (не запущено)`, selected: true }));
+        }
+
+        const refresh = el("button", { type: "button", textContent: "↻", title: "Обновить список", on: { click: requestDevices } });
+
+        const step = el("select", { on: { change: (e) => saveSettings({ step: Number(e.target.value) }) } },
+          [1, 2, 5, 10].map((n) => el("option", { value: n, textContent: `${n}%`, selected: Number(s.step) === n })));
+
+        const label = el("input", {
+          id: "label", type: "text", value: s.label, placeholder: "Имя приложения",
+          on: { change: (e) => saveSettings({ label: e.target.value.trim() }) },
+        });
+
+        document.getElementById("app").replaceChildren(
+          row("Приложение", el("div", { className: "inline" }, [appSelect, refresh])),
+          row("Шаг", step),
+          row("Подпись", label),
+          el("p", { className: "hint", textContent:
+            "В списке — приложения, которые сейчас работают со звуком (▶ — играет). " +
+            "Нет нужного? Включите в нём звук и нажмите ↻. " +
+            "При первом изменении громкости macOS попросит разрешение на запись системного звука." }),
+        );
+      },
+    };
+  </script>
+</body>
+</html>

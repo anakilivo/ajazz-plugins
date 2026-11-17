@@ -1,0 +1,64 @@
+{
+  "Actions": [
+    {
+      "UUID": "com.anakilivo.streamdock.mixer.channel",
+      "Name": "Канал (громкость / mute)",
+      "Tooltip": "Поворот — громкость, нажатие — выключить/включить звук",
+      "Icon": "static/channel.png",
+      "States": [{ "Image": "static/channel.png" }],
+      "Controllers": ["Knob"],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "PropertyInspectorPath": "pi/channel.html"
+    },
+    {
+      "UUID": "com.anakilivo.streamdock.mixer.app",
+      "Name": "Приложение (громкость / mute)",
+      "Tooltip": "Громкость отдельного приложения: поворот — громкость, нажатие — выключить/включить звук. macOS 14.2+",
+      "Icon": "static/app.png",
+      "States": [{ "Image": "static/app.png" }],
+      "Controllers": ["Knob"],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "PropertyInspectorPath": "pi/app.html"
+    },
+    {
+      "UUID": "com.anakilivo.streamdock.mixer.device-knob",
+      "Name": "Выбор устройства (крутилка)",
+      "Tooltip": "Поворот — листать устройства, нажатие — сделать основным",
+      "Icon": "static/device.png",
+      "States": [{ "Image": "static/device.png" }],
+      "Controllers": ["Knob"],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "PropertyInspectorPath": "pi/device.html"
+    },
+    {
+      "UUID": "com.anakilivo.streamdock.mixer.device-key",
+      "Name": "Следующее устройство",
+      "Tooltip": "Нажатие — переключить на следующее устройство из списка",
+      "Icon": "static/device.png",
+      "States": [{ "Image": "static/device.png" }],
+      "Controllers": ["Keypad"],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": true,
+      "PropertyInspectorPath": "pi/device.html"
+    }
+  ],
+  "Name": "Audio Mixer",
+  "Description": "Микшер звука и микрофонов: громкость, mute и переключение устройств",
+  "Author": "Anakilivo",
+  "Version": "0.1.0",
+  "Icon": "static/plugin.png",
+  "Category": "Audio Mixer",
+  "CategoryIcon": "static/plugin.png",
+  "SDKVersion": 1,
+  "CodePathMac": "plugin/index.js",
+  "CodePathWin": "plugin/index.js",
+  "OS": [
+    { "Platform": "mac", "MinimumVersion": "10.15" },
+    { "Platform": "windows", "MinimumVersion": "10" }
+  ],
+  "Software": { "MinimumVersion": "3.10.188.226" },
+  "Nodejs": { "Version": "20" }
+}

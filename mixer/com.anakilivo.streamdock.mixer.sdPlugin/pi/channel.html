@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="pi.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="pi.js"></script>
+  <script>
+    window.PI = {
+      defaults: { scope: "output", device: "", step: 2, label: "" },
+      render(s, devices) {
+        const app = document.getElementById("app");
+        // Не перерисовываем, пока пользователь печатает имя.
+        if (document.activeElement?.id === "label") return;
+
+        const deviceSelect = el("select", { on: { change: (e) => saveSettings({ device: e.target.value }) } }, [
+          el("option", { value: "", textContent: "Системное по умолчанию", selected: !s.device }),
+          ...devices.filter((d) => d[s.scope]).map((d) =>
+            el("option", { value: d.uid, textContent: d.name, selected: d.uid === s.device })),
+        ]);
+        if (s.device && !devices.some((d) => d.uid === s.device)) {
+          deviceSelect.append(el("option", { value: s.device, textContent: "(отключено)", selected: true }));
+        }
+
+        const step = el("select", { on: { change: (e) => saveSettings({ step: Number(e.target.value) }) } },
+          [1, 2, 5, 10].map((n) => el("option", { value: n, textContent: `${n}%`, selected: Number(s.step) === n })));
+
+        const label = el("input", {
+          id: "label", type: "text", value: s.label, placeholder: "Имя устройства",
+          on: { change: (e) => saveSettings({ label: e.target.value.trim() }) },
+        });
+
+        app.replaceChildren(
+          row("Канал", scopeSelect()),
+          row("Устройство", deviceSelect),
+          row("Шаг", step),
+          row("Подпись", label),
+          el("p", { className: "hint", textContent: "Поворот крутилки меняет громкость, нажатие выключает и включает звук." }),
+        );
+      },
+    };
+  </script>
+</body>
+</html>
