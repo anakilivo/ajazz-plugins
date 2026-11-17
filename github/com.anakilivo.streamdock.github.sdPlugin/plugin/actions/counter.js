@@ -32,12 +32,12 @@ module.exports = function registerCounters(sd, github) {
     sd.register(uuid, {
       willAppear({ context }) {
         contexts.add(context);
-        github.retain();
+        github.retain(context);
         draw(context);
       },
       willDisappear({ context }) {
         contexts.delete(context);
-        github.release();
+        github.release(context);
         forget(context);
         forgetInspector(context);
       },

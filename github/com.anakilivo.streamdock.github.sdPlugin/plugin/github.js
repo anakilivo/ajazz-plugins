@@ -1,7 +1,8 @@
 "use strict";
 
 // Данные GitHub для всех действий: одним GraphQL-запросом раз в POLL_MS получаем
-// PR для ревью и мои открытые PR со статусом CI. Опрашиваем, только пока
+// PR для ревью и мои открытые PR со статусом CI (и при повороте крутилки, если данные
+// старше POLL_MS). Опрашиваем, только пока
 // на устройстве видно хотя бы одно действие плагина. Эмитит "change", а при
 // изменении настроек (токен, репозитории, скрытые PR) — "settings" для сохранения.
 //
@@ -130,9 +131,11 @@ class GitHub extends EventEmitter {
     this.state = { status: "loading", user: null, source: null, error: null, review: summary([]), mine: summary([]) };
     this.settings = { token: "", repos: [], dismissed: {} };
     this.reviewAll = []; // все кандидаты на ревью, включая скрытые — для пересчёта без запроса
-    this.users = 0;
+    this.users = new Set(); // контексты действий на устройстве
     this.timer = null;
     this.inFlight = null;
+    this.again = false; // refresh() во время запроса — после него запросить ещё раз
+    this.fetchedAt = 0;
   }
 
   /** Настройки из глобальных настроек плагина (один раз при старте). */
@@ -180,23 +183,39 @@ class GitHub extends EventEmitter {
   }
 
   /** Действие появилось на устройстве — начинаем опрос. */
-  retain() {
-    if (this.users++ === 0) {
+  retain(context) {
+    this.users.add(context);
+    if (!this.timer) {
       this.refresh();
       this.timer = setInterval(() => this.refresh(), POLL_MS);
     }
   }
 
-  release() {
-    if (--this.users === 0) {
+  release(context) {
+    this.users.delete(context);
+    if (!this.users.size && this.timer) {
       clearInterval(this.timer);
       this.timer = null;
     }
   }
 
+  /** Данные старше POLL_MS (таймер мог отстать, например пока Mac спал) — обновить. */
+  refreshIfStale() {
+    if (Date.now() - this.fetchedAt > POLL_MS) this.refresh();
+  }
+
   refresh() {
-    this.inFlight ??= this.fetch().finally(() => {
+    if (this.inFlight) {
+      // Настройки могли поменяться уже после начала запроса.
+      this.again = true;
+      return this.inFlight;
+    }
+    this.inFlight = this.fetch().finally(() => {
       this.inFlight = null;
+      if (this.again) {
+        this.again = false;
+        this.refresh();
+      }
     });
     return this.inFlight;
   }
@@ -242,6 +261,9 @@ class GitHub extends EventEmitter {
       }
 
       const mine = nodes(data.mine).map((pr) => toItem(pr));
+      log.info("fetched: review", this.reviewAll.length, "mine", mine.length,
+        "since last", this.fetchedAt ? `${Math.round((Date.now() - this.fetchedAt) / 1000)}s` : "-");
+      this.fetchedAt = Date.now();
       this.set({ status: "ok", source, error: null, user: data.viewer.login, mine: summary(mine, data.mine.issueCount) });
       this.applyReviewFilter();
     } catch (e) {

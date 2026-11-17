@@ -45,7 +45,7 @@ module.exports = function registerFeed(sd, github) {
       state.settings = settings;
     } else {
       contexts.set(context, { settings, url: null });
-      github.retain();
+      github.retain(context);
     }
     draw(context);
   }
@@ -77,7 +77,8 @@ module.exports = function registerFeed(sd, github) {
     willAppear: setSettings,
     didReceiveSettings: setSettings,
     willDisappear({ context }) {
-      if (contexts.delete(context)) github.release();
+      contexts.delete(context);
+      github.release(context);
       forget(context);
       forgetInspector(context);
     },
@@ -86,6 +87,8 @@ module.exports = function registerFeed(sd, github) {
       if (presses.dialRotate(msg)) return;
       const { context, payload } = msg;
       const state = contexts.get(context);
+      if (!state) return;
+      github.refreshIfStale();
       const { items, index } = position(state);
       const ticks = payload?.ticks || 0;
       if (!items.length || !ticks) return;
