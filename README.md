@@ -6,6 +6,7 @@
 | Папка | Плагин | Платформы |
 |---|---|---|
 | [`mixer/`](mixer/README.md) | Audio Mixer — громкость/mute устройств и приложений, переключение устройств | macOS, Windows |
+| [`github/`](github/README.md) | GitHub — PR на ревью, мои PR со статусом CI, лента PR на крутилке | macOS, Windows |
 
 ## Скачать
 

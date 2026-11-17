@@ -1,0 +1,53 @@
+{
+  "Actions": [
+    {
+      "UUID": "com.anakilivo.streamdock.github.review",
+      "Name": "PR на ревью",
+      "Tooltip": "Сколько PR ждут вашего ревью. Нажатие — открыть список",
+      "Icon": "static/review.png",
+      "States": [{ "Image": "static/review.png" }],
+      "Controllers": ["Keypad"],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "PropertyInspectorPath": "pi/settings.html"
+    },
+    {
+      "UUID": "com.anakilivo.streamdock.github.mine",
+      "Name": "Мои PR",
+      "Tooltip": "Ваши открытые PR и общий статус CI. Нажатие — открыть список",
+      "Icon": "static/mine.png",
+      "States": [{ "Image": "static/mine.png" }],
+      "Controllers": ["Keypad"],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "PropertyInspectorPath": "pi/settings.html"
+    },
+    {
+      "UUID": "com.anakilivo.streamdock.github.feed",
+      "Name": "Лента PR (крутилка)",
+      "Tooltip": "Поворот — листать PR, нажатие — открыть в браузере",
+      "Icon": "static/feed.png",
+      "States": [{ "Image": "static/feed.png" }],
+      "Controllers": ["Knob"],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "PropertyInspectorPath": "pi/settings.html"
+    }
+  ],
+  "Name": "GitHub",
+  "Description": "Pull request'ы GitHub: на ревью, мои PR со статусом CI, лента на крутилке",
+  "Author": "Anakilivo",
+  "Version": "0.1.0",
+  "Icon": "static/plugin.png",
+  "Category": "GitHub",
+  "CategoryIcon": "static/plugin.png",
+  "SDKVersion": 1,
+  "CodePathMac": "plugin/index.js",
+  "CodePathWin": "plugin/index.js",
+  "OS": [
+    { "Platform": "mac", "MinimumVersion": "10.15" },
+    { "Platform": "windows", "MinimumVersion": "10" }
+  ],
+  "Software": { "MinimumVersion": "3.10.188.226" },
+  "Nodejs": { "Version": "20" }
+}

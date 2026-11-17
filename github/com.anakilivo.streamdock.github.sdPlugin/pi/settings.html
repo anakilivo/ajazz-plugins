@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="pi.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    // Property Inspector всех действий GitHub-плагина: вход (gh или токен) и,
+    // для ленты на крутилке, выбор списка.
+    const FEED = "com.anakilivo.streamdock.github.feed";
+    let socket, piUUID, actionUUID;
+    let settings = {};
+    let auth = null;
+
+    function sendJSON(msg) {
+      if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(msg));
+    }
+
+    function toPlugin(payload) {
+      sendJSON({ event: "sendToPlugin", action: actionUUID, context: piUUID, payload });
+    }
+
+    function saveSettings(patch) {
+      Object.assign(settings, patch);
+      sendJSON({ event: "setSettings", context: piUUID, payload: settings });
+      render();
+    }
+
+    function el(tag, attrs = {}, children = []) {
+      const node = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        if (k === "on") Object.entries(v).forEach(([ev, fn]) => node.addEventListener(ev, fn));
+        else if (k in node) node[k] = v;
+        else node.setAttribute(k, v);
+      }
+      for (const child of [].concat(children)) node.append(child);
+      return node;
+    }
+
+    function row(label, control) {
+      return el("div", { className: "row" }, [el("label", { textContent: label }), control]);
+    }
+
+    function authText() {
+      if (!auth) return "Проверка…";
+      if (auth.status === "ok") return `@${auth.user} (${auth.source === "gh" ? "через gh" : "токен"})`;
+      if (auth.status === "loading") return "Загрузка…";
+      return auth.error || "Нет входа";
+    }
+
+    function render() {
+      // Не перерисовываем, пока пользователь что-то вводит.
+      if (["token", "repos"].includes(document.activeElement?.id)) return;
+
+      const rows = [];
+      if (actionUUID === FEED) {
+        rows.push(row("Список", el("select", { on: { change: (e) => saveSettings({ source: e.target.value }) } }, [
+          el("option", { value: "review", textContent: "На ревью", selected: settings.source !== "mine" }),
+          el("option", { value: "mine", textContent: "Мои PR", selected: settings.source === "mine" }),
+        ])));
+        rows.push(el("p", { className: "hint", textContent: settings.source === "mine"
+          ? "Касание экрана или нажатие крутилки — открыть PR."
+          : "Касание экрана — открыть PR. Нажатие крутилки — «посмотрел»: PR скроется до новых коммитов." }));
+      }
+
+      const repos = el("textarea", {
+        id: "repos", rows: 4, placeholder: "Genetica-Corp/agent-query\nGenetica-Corp/serve-ai-access-manager",
+        value: (auth?.repos || []).join("\n"),
+        on: { change: (e) => toPlugin({ type: "setRepos", repos: e.target.value.split(/[\s,]+/) }) },
+      });
+      rows.push(row("Репозитории", repos));
+      rows.push(el("p", { className: "hint", textContent:
+        "«На ревью» — PR, где вас добавили ревьюером, и все открытые PR этих репозиториев (кроме ваших и черновиков). " +
+        "«Мои PR» — только ваши PR в этих репозиториях (пусто — по всему GitHub). " +
+        "По одному в строке: owner/repo или просто организация. Настройка общая для всех действий плагина." }));
+
+      if (auth?.hidden) {
+        rows.push(row("Скрыто", el("button", {
+          type: "button", textContent: `Показать скрытые (${auth.hidden})`,
+          on: { click: () => toPlugin({ type: "clearDismissed" }) },
+        })));
+        rows.push(el("p", { className: "hint", textContent:
+          "Скрываются PR, отмеченные «посмотрел», и те, где вы уже оставили ревью на последний коммит. " +
+          "Новые коммиты возвращают PR в список. Кнопка сбрасывает только ручные отметки." }));
+      }
+
+      const ok = auth?.status === "ok";
+      rows.push(row("GitHub", el("div", { className: "inline" }, [
+        el("span", { className: ok ? "status ok" : "status", textContent: authText() }),
+        el("button", { type: "button", textContent: "↻", title: "Обновить", on: { click: () => toPlugin({ type: "refresh" }) } }),
+      ])));
+
+      const token = el("input", {
+        id: "token", type: "password", placeholder: auth?.hasToken ? "•••••• (сохранён)" : "ghp_… или github_pat_…",
+        on: { change: (e) => { toPlugin({ type: "setToken", token: e.target.value }); e.target.value = ""; e.target.blur(); } },
+      });
+      rows.push(row("Токен", token));
+      if (auth?.hasToken) {
+        rows.push(row("", el("button", { type: "button", textContent: "Удалить токен", on: { click: () => toPlugin({ type: "setToken", token: "" }) } })));
+      }
+      rows.push(el("p", { className: "hint", textContent:
+        "Если установлен GitHub CLI и выполнен gh auth login, токен не нужен. " +
+        "Иначе создайте Personal Access Token (classic: scope repo; fine-grained: Pull requests — read) и вставьте сюда." }));
+
+      document.getElementById("app").replaceChildren(...rows);
+    }
+
+    // Имя функции задано SDK Stream Dock / Elgato.
+    function connectElgatoStreamDeckSocket(port, uuid, registerEvent, _appInfo, actionInfo) {
+      piUUID = uuid;
+      const info = JSON.parse(actionInfo);
+      actionUUID = info.action;
+      settings = { ...(info.payload?.settings || {}) };
+      render();
+
+      socket = new WebSocket(`ws://127.0.0.1:${port}`);
+      socket.onopen = () => {
+        sendJSON({ event: registerEvent, uuid });
+        toPlugin({ type: "status" });
+      };
+      socket.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (msg.event === "didReceiveSettings") {
+          settings = { ...msg.payload.settings };
+          render();
+        } else if (msg.event === "sendToPropertyInspector" && msg.payload?.type === "status") {
+          auth = msg.payload;
+          render();
+        }
+      };
+    }
+    window.connectElgatoStreamDeckSocket = connectElgatoStreamDeckSocket;
+    window.connectSocket = connectElgatoStreamDeckSocket;
+  </script>
+</body>
+</html>
