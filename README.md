@@ -7,6 +7,16 @@
 |---|---|---|
 | [`mixer/`](mixer/README.md) | Audio Mixer — громкость/mute устройств и приложений, переключение устройств | macOS, Windows |
 
+## Скачать
+
+Готовые архивы — в [Releases](https://github.com/anakilivo/ajazz-plugins/releases): у каждого плагина
+свои релизы (`mixer-v…`), в каждом — архивы для macOS и Windows и инструкция по установке.
+
+Релизы собирает GitHub Actions: пуш в `master` с изменениями в папке плагина создаёт новый релиз
+`<папка>-v<major.minor>.<номер сборки>`. `major.minor` берётся из `manifest.json` — поднимайте его вручную,
+когда нужно; номер сборки ставится сам. Workflow плагина — `.github/workflows/<папка>.yml`; для нового
+плагина скопируйте `mixer.yml` и поменяйте `PLUGIN_DIR`, `PLUGIN_ID`, `TITLE` и шаги сборки.
+
 ## Структура плагина
 
 ```

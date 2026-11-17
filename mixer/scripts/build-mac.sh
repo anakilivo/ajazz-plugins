@@ -1,5 +1,6 @@
 #!/bin/zsh
-# Собирает плагин для macOS: нативный помощник, иконки, npm-зависимости.
+# Собирает плагин для macOS: нативный помощник, иконки, npm-зависимости,
+# и упаковывает его в dist/<plugin>-macos.zip.
 # --install  — дополнительно ставит плагин в Stream Dock (симлинк) и перезапускает приложение.
 set -euo pipefail
 
@@ -26,6 +27,13 @@ swift "$ROOT/scripts/icons.swift" "$PLUGIN/static"
 echo "→ npm"
 (cd "$PLUGIN/plugin" && npm install --omit=dev --no-audit --no-fund --silent)
 
+echo "→ zip"
+mkdir -p "$ROOT/dist"
+zip_path="$ROOT/dist/${PLUGIN_ID%.sdPlugin}-macos.zip"
+rm -f "$zip_path"
+(cd "$ROOT" && zip -qr "$zip_path" "$PLUGIN_ID" \
+  -x "*/log/*" "*/bin/audio-helper-win.exe" "*.DS_Store")
+
 if [[ "${1:-}" == "--install" ]]; then
   echo "→ install into Stream Dock"
   target="$PLUGINS_DIR/$PLUGIN_ID"
@@ -39,4 +47,4 @@ if [[ "${1:-}" == "--install" ]]; then
   open -a "Stream Dock AJAZZ"
 fi
 
-echo "✓ done"
+echo "✓ $zip_path"
