@@ -1,0 +1,84 @@
+# Jira-плагин: при пуше в master с изменениями в jira/ собирает один архив
+# (macOS + Windows, нативного кода нет) и публикует релиз jira-v<major.minor>.<номер сборки>.
+
+name: Jira plugin release
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "jira/**"
+      - ".github/workflows/jira.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: release-jira
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  PLUGIN_DIR: jira
+  PLUGIN_ID: com.anakilivo.streamdock.jira
+  TITLE: Jira
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install zsh
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq zsh zip
+
+      - name: Version
+        id: version
+        run: |
+          manifest="$PLUGIN_DIR/$PLUGIN_ID.sdPlugin/manifest.json"
+          base=$(jq -r .Version "$manifest" | cut -d. -f1-2)
+          version="$base.$GITHUB_RUN_NUMBER"
+          # Версия попадает в manifest внутри архива; в репозитории остаётся major.minor.0.
+          jq --arg v "$version" '.Version = $v' "$manifest" > manifest.tmp && mv manifest.tmp "$manifest"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$PLUGIN_DIR-v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: $PLUGIN_DIR/scripts/build.sh
+
+      - name: Release notes
+        run: |
+          previous=$(git tag -l "$PLUGIN_DIR-v*" --sort=-v:refname | head -1)
+          range=${previous:+$previous..}HEAD
+          {
+            echo "## Изменения"
+            git log --format='- %s' "$range" -- "$PLUGIN_DIR"
+            echo
+            echo "## Установка"
+            echo
+            echo "Закройте Stream Dock, распакуйте \`${PLUGIN_ID}.zip\` в папку плагинов и запустите Stream Dock снова:"
+            echo
+            echo "- **macOS** — \`~/Library/Application Support/HotSpot/StreamDock/plugins/\`"
+            echo "- **Windows** — \`%APPDATA%\\HotSpot\\StreamDock\\plugins\\\`"
+            echo
+            echo "Вход: в настройках любого действия плагина укажите сайт (company.atlassian.net), email"
+            echo "и API-токен (id.atlassian.com → Security → API tokens)."
+          } > notes.md
+          cat notes.md
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$TAG" "$PLUGIN_DIR/dist/$PLUGIN_ID.zip" \
+            --target "$GITHUB_SHA" \
+            --title "$TITLE $VERSION" \
+            --notes-file notes.md

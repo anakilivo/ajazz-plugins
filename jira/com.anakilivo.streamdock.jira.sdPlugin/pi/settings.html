@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="pi.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    // Property Inspector всех действий Jira-плагина: вход (сайт, email, API-токен).
+    let socket, piUUID, actionUUID;
+    let auth = null;
+
+    function sendJSON(msg) {
+      if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(msg));
+    }
+
+    function toPlugin(payload) {
+      sendJSON({ event: "sendToPlugin", action: actionUUID, context: piUUID, payload });
+    }
+
+    function el(tag, attrs = {}, children = []) {
+      const node = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        if (k === "on") Object.entries(v).forEach(([ev, fn]) => node.addEventListener(ev, fn));
+        else if (k in node) node[k] = v;
+        else node.setAttribute(k, v);
+      }
+      for (const child of [].concat(children)) node.append(child);
+      return node;
+    }
+
+    function row(label, control) {
+      return el("div", { className: "row" }, [el("label", { textContent: label }), control]);
+    }
+
+    function statusText() {
+      if (!auth) return "Проверка…";
+      if (auth.status === "ok") return `Вход выполнен: ${auth.user}`;
+      if (auth.status === "loading") return "Загрузка…";
+      return auth.error || "Нет входа";
+    }
+
+    function render() {
+      // Не перерисовываем, пока пользователь что-то вводит.
+      if (["site", "email", "token", "filter"].includes(document.activeElement?.id)) {
+        renderBoards();
+        return;
+      }
+
+      const field = (id, type, placeholder, value) => el("input", {
+        id, type, placeholder, value: value || "",
+        on: { change: (e) => toPlugin({ type: "setAuth", [id]: e.target.value }) },
+      });
+      const token = field("token", "password", auth?.hasToken ? "•••••• (сохранён)" : "API-токен");
+      token.addEventListener("change", () => { token.value = ""; token.blur(); });
+
+      const ok = auth?.status === "ok";
+      document.getElementById("app").replaceChildren(
+        row("Сайт", field("site", "text", "company.atlassian.net", auth?.site)),
+        row("Email", field("email", "text", "you@company.com", auth?.email)),
+        row("Токен", token),
+        row("Jira", el("div", { className: "inline" }, [
+          el("span", { className: ok ? "status ok" : "status", textContent: statusText() }),
+          el("button", { type: "button", textContent: "↻", title: "Обновить", on: { click: () => toPlugin({ type: "refresh" }) } }),
+        ])),
+        el("p", { className: "hint", textContent:
+          "API-токен создаётся на id.atlassian.com → Security → API tokens." }),
+        row("Доски", el("input", {
+          id: "filter", type: "text", placeholder: "Поиск доски", value: boardFilter,
+          on: { input: (e) => { boardFilter = e.target.value; renderBoards(); } },
+        })),
+        el("div", { id: "boards", className: "list boards" }),
+        el("p", { className: "hint", textContent:
+          "Тикеты на вас в активных спринтах отмеченных досок (поиск — по названию доски или ключу проекта, например AQ). Ничего не отмечено — все открытые спринты. " +
+          "Сделанные учитываются только в счётчике «из N»." }),
+      );
+      renderBoards();
+
+      // Список досок грузим, когда вход выполнен.
+      if (ok && boardList === null && !boardsLoading) {
+        boardsLoading = true;
+        toPlugin({ type: "getBoards" });
+      }
+    }
+
+    // MARK: - Доски
+
+    let boardList = null; // [{ id, name, project }] — все scrum-доски сайта
+    let boardsLoading = false;
+    let boardsError = null;
+    let boardFilter = "";
+
+    function renderBoards() {
+      const container = document.getElementById("boards");
+      if (!container) return;
+      const selected = auth?.boards || [];
+      const selectedIds = new Set(selected.map((b) => b.id));
+
+      const toggle = (board, on) => {
+        const next = on ? [...selected, board] : selected.filter((b) => b.id !== board.id);
+        toPlugin({ type: "setBoards", boards: next.map(({ id, name }) => ({ id, name })) });
+      };
+      const item = (board, checked) => el("label", {}, [
+        el("input", { type: "checkbox", checked, on: { change: (e) => toggle(board, e.target.checked) } }),
+        board.project ? `${board.name} (${board.project})` : board.name,
+      ]);
+
+      const query = boardFilter.trim().toLowerCase();
+      const others = (boardList || [])
+        .filter((b) => !selectedIds.has(b.id))
+        .filter((b) => !query || `${b.name} ${b.project}`.toLowerCase().includes(query));
+      // Отмеченные — всегда сверху; остальных показываем не больше 50, дальше — поиск.
+      const children = [...selected.map((b) => item({ ...(boardList || []).find((x) => x.id === b.id), ...b }, true)),
+                        ...others.slice(0, 50).map((b) => item(b, false))];
+      if (others.length > 50) children.push(el("span", { className: "hint", textContent: `…ещё ${others.length - 50}, уточните поиск` }));
+      if (boardsError) children.push(el("span", { className: "hint", textContent: `Не удалось загрузить доски: ${boardsError}` }));
+      else if (boardList === null) children.push(el("span", { className: "hint", textContent: auth?.status === "ok" ? "Загрузка досок…" : "Сначала войдите в Jira" }));
+      container.replaceChildren(...children);
+    }
+
+    // Имя функции задано SDK Stream Dock / Elgato.
+    function connectElgatoStreamDeckSocket(port, uuid, registerEvent, _appInfo, actionInfo) {
+      piUUID = uuid;
+      actionUUID = JSON.parse(actionInfo).action;
+      render();
+
+      socket = new WebSocket(`ws://127.0.0.1:${port}`);
+      socket.onopen = () => {
+        sendJSON({ event: registerEvent, uuid });
+        toPlugin({ type: "status" });
+      };
+      socket.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (msg.event !== "sendToPropertyInspector") return;
+        if (msg.payload?.type === "status") {
+          auth = msg.payload;
+          render();
+        } else if (msg.payload?.type === "boards") {
+          boardsLoading = false;
+          boardsError = msg.payload.error || null;
+          boardList = boardsError ? null : msg.payload.boards;
+          renderBoards();
+        }
+      };
+    }
+    window.connectElgatoStreamDeckSocket = connectElgatoStreamDeckSocket;
+    window.connectSocket = connectElgatoStreamDeckSocket;
+  </script>
+</body>
+</html>

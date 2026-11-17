@@ -1,0 +1,42 @@
+{
+  "Actions": [
+    {
+      "UUID": "com.anakilivo.streamdock.jira.sprint",
+      "Name": "Мой спринт",
+      "Tooltip": "Сколько ваших тикетов в спринте ещё не сделано. Нажатие — открыть список в Jira",
+      "Icon": "static/sprint.png",
+      "States": [{ "Image": "static/sprint.png" }],
+      "Controllers": ["Keypad"],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "PropertyInspectorPath": "pi/settings.html"
+    },
+    {
+      "UUID": "com.anakilivo.streamdock.jira.feed",
+      "Name": "Тикеты спринта (крутилка)",
+      "Tooltip": "Поворот — листать тикеты со статусом, нажатие или касание экрана — открыть тикет",
+      "Icon": "static/feed.png",
+      "States": [{ "Image": "static/feed.png" }],
+      "Controllers": ["Knob"],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "PropertyInspectorPath": "pi/settings.html"
+    }
+  ],
+  "Name": "Jira",
+  "Description": "Ваши тикеты в текущем спринте Jira: счётчик на клавише и лента со статусами на крутилке",
+  "Author": "Anakilivo",
+  "Version": "0.1.0",
+  "Icon": "static/plugin.png",
+  "Category": "Jira",
+  "CategoryIcon": "static/plugin.png",
+  "SDKVersion": 1,
+  "CodePathMac": "plugin/index.js",
+  "CodePathWin": "plugin/index.js",
+  "OS": [
+    { "Platform": "mac", "MinimumVersion": "10.15" },
+    { "Platform": "windows", "MinimumVersion": "10" }
+  ],
+  "Software": { "MinimumVersion": "3.10.188.226" },
+  "Nodejs": { "Version": "20" }
+}
