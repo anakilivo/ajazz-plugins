@@ -107,6 +107,8 @@ module.exports = function registerDevice(sd, audio) {
   sd.register(KNOB_UUID, {
     ...make(false),
     dialRotate({ context, payload }) {
+      // При нажатии крутилки AKP05E Pro присылает ещё и «поворот» с pressed: true — это не поворот.
+      if (payload?.pressed) return;
       const state = contexts.get(context);
       const list = candidates(state.settings);
       const ticks = payload?.ticks || 0;

@@ -96,7 +96,11 @@ module.exports = function registerChannel(sd, audio) {
       contexts.delete(context);
       forget(context);
     },
-    dialRotate: ({ context, payload }) => rotate(context, payload?.ticks || 0).catch(() => sd.showAlert(context)),
+    dialRotate: ({ context, payload }) => {
+      // При нажатии крутилки AKP05E Pro присылает ещё и «поворот» с pressed: true — это не поворот.
+      if (payload?.pressed) return;
+      return rotate(context, payload?.ticks || 0).catch(() => sd.showAlert(context));
+    },
     dialDown: press,
     // Некоторые прошивки присылают нажатие крутилки как keyDown.
     keyDown: press,
