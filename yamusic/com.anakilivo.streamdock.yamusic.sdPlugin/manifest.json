@@ -1,0 +1,183 @@
+{
+  "Actions": [
+    {
+      "UUID": "com.anakilivo.streamdock.yamusic.nowplaying",
+      "Name": "Сейчас играет (крутилка)",
+      "Tooltip": "Обложка, трек и волна. Поворот — перемотка, нажатие — пауза, касание экрана — лайк",
+      "Icon": "static/nowplaying.png",
+      "States": [
+        {
+          "Image": "static/nowplaying.png"
+        }
+      ],
+      "Controllers": [
+        "Knob"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": false,
+      "PropertyInspectorPath": "pi/settings.html"
+    },
+    {
+      "UUID": "com.anakilivo.streamdock.yamusic.cover",
+      "Name": "Обложка",
+      "Tooltip": "Обложка трека с прогрессом; нажатие — пауза/играть",
+      "Icon": "static/cover.png",
+      "States": [
+        {
+          "Image": "static/cover.png"
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": true,
+      "PropertyInspectorPath": "pi/settings.html"
+    },
+    {
+      "UUID": "com.anakilivo.streamdock.yamusic.playpause",
+      "Name": "Пауза / играть",
+      "Tooltip": "Пауза или воспроизведение",
+      "Icon": "static/playpause.png",
+      "States": [
+        {
+          "Image": "static/playpause.png"
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": true,
+      "PropertyInspectorPath": "pi/settings.html"
+    },
+    {
+      "UUID": "com.anakilivo.streamdock.yamusic.next",
+      "Name": "Следующий трек",
+      "Tooltip": "Следующий трек",
+      "Icon": "static/next.png",
+      "States": [
+        {
+          "Image": "static/next.png"
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": true,
+      "PropertyInspectorPath": "pi/settings.html"
+    },
+    {
+      "UUID": "com.anakilivo.streamdock.yamusic.previous",
+      "Name": "Предыдущий трек",
+      "Tooltip": "Предыдущий трек",
+      "Icon": "static/previous.png",
+      "States": [
+        {
+          "Image": "static/previous.png"
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": true,
+      "PropertyInspectorPath": "pi/settings.html"
+    },
+    {
+      "UUID": "com.anakilivo.streamdock.yamusic.like",
+      "Name": "Лайк",
+      "Tooltip": "Поставить или снять лайк",
+      "Icon": "static/like.png",
+      "States": [
+        {
+          "Image": "static/like.png"
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": true,
+      "PropertyInspectorPath": "pi/settings.html"
+    },
+    {
+      "UUID": "com.anakilivo.streamdock.yamusic.dislike",
+      "Name": "Дизлайк",
+      "Tooltip": "Дизлайк — трек пропускается",
+      "Icon": "static/dislike.png",
+      "States": [
+        {
+          "Image": "static/dislike.png"
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": true,
+      "PropertyInspectorPath": "pi/settings.html"
+    },
+    {
+      "UUID": "com.anakilivo.streamdock.yamusic.shuffle",
+      "Name": "Вперемешку",
+      "Tooltip": "Включить или выключить случайный порядок",
+      "Icon": "static/shuffle.png",
+      "States": [
+        {
+          "Image": "static/shuffle.png"
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": true,
+      "PropertyInspectorPath": "pi/settings.html"
+    },
+    {
+      "UUID": "com.anakilivo.streamdock.yamusic.repeat",
+      "Name": "Повтор",
+      "Tooltip": "Повтор: выкл → список → один трек",
+      "Icon": "static/repeat.png",
+      "States": [
+        {
+          "Image": "static/repeat.png"
+        }
+      ],
+      "Controllers": [
+        "Keypad"
+      ],
+      "UserTitleEnabled": false,
+      "SupportedInMultiActions": true,
+      "PropertyInspectorPath": "pi/settings.html"
+    }
+  ],
+  "Name": "Яндекс Музыка",
+  "Description": "Яндекс Музыка: обложка, волна под музыку, перемотка и управление плеером",
+  "Author": "Anakilivo",
+  "Version": "0.1.0",
+  "Icon": "static/plugin.png",
+  "Category": "Яндекс Музыка",
+  "CategoryIcon": "static/plugin.png",
+  "SDKVersion": 1,
+  "CodePathMac": "plugin/index.js",
+  "CodePathWin": "plugin/index.js",
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "14.2"
+    },
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "Software": {
+    "MinimumVersion": "3.10.188.226"
+  },
+  "Nodejs": {
+    "Version": "20"
+  }
+}

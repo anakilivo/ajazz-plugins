@@ -8,6 +8,7 @@
 | [`mixer/`](mixer/README.md) | Audio Mixer — громкость/mute устройств и приложений, переключение устройств | macOS, Windows |
 | [`github/`](github/README.md) | GitHub — PR на ревью, мои PR со статусом CI, лента PR на крутилке | macOS, Windows |
 | [`jira/`](jira/README.md) | Jira — мои тикеты в спринте: счётчик на клавише, лента со статусами на крутилке | macOS, Windows |
+| [`yamusic/`](yamusic/README.md) | Яндекс Музыка — обложка, трек и волна под музыку на крутилке, клавиши плеера | macOS, Windows (без волны) |
 
 ## Скачать
 

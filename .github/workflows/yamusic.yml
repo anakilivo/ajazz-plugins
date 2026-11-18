@@ -1,0 +1,92 @@
+# Яндекс Музыка: при пуше в master с изменениями в yamusic/ собирает плагин
+# для macOS и Windows и публикует релиз yamusic-v<major.minor из manifest>.<номер сборки>.
+
+name: Yandex Music plugin release
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "yamusic/**"
+      - ".github/workflows/yamusic.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: release-yamusic
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  PLUGIN_DIR: yamusic
+  PLUGIN_ID: com.anakilivo.streamdock.yamusic
+  TITLE: Яндекс Музыка
+
+jobs:
+  release:
+    # Нужен macOS: Swift-помощник волны (перехват звука Музыки).
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Version
+        id: version
+        run: |
+          manifest="$PLUGIN_DIR/$PLUGIN_ID.sdPlugin/manifest.json"
+          base=$(jq -r .Version "$manifest" | cut -d. -f1-2)
+          version="$base.$GITHUB_RUN_NUMBER"
+          # Версия попадает в manifest внутри архивов; в репозитории остаётся major.minor.0.
+          jq --arg v "$version" '.Version = $v' "$manifest" > manifest.tmp && mv manifest.tmp "$manifest"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$PLUGIN_DIR-v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build macOS
+        run: $PLUGIN_DIR/scripts/build-mac.sh
+
+      - name: Build Windows
+        run: $PLUGIN_DIR/scripts/build-win.sh
+
+      - name: Release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          previous=$(git tag -l "$PLUGIN_DIR-v*" --sort=-v:refname | head -1)
+          range=${previous:+$previous..}HEAD
+          {
+            echo "## Изменения"
+            git log --format='- %s' "$range" -- "$PLUGIN_DIR"
+            echo
+            echo "## Установка"
+            echo
+            echo "Закройте Stream Dock, распакуйте архив в папку плагинов и запустите Stream Dock снова."
+            echo
+            echo "**macOS** — \`${PLUGIN_ID}-macos.zip\` → \`~/Library/Application Support/HotSpot/StreamDock/plugins/\`."
+            echo "Помощник не подписан сертификатом Apple, поэтому после распаковки снимите карантин:"
+            echo
+            echo '```sh'
+            echo "xattr -dr com.apple.quarantine ~/Library/Application\\ Support/HotSpot/StreamDock/plugins/${PLUGIN_ID}.sdPlugin"
+            echo '```'
+            echo
+            echo "**Windows** — \`${PLUGIN_ID}-windows.zip\` → \`%APPDATA%\\HotSpot\\StreamDock\\plugins\\\`. Волны на Windows пока нет."
+          } > notes.md
+          cat notes.md
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$TAG" \
+            "$PLUGIN_DIR/dist/$PLUGIN_ID-macos.zip" \
+            "$PLUGIN_DIR/dist/$PLUGIN_ID-windows.zip" \
+            --target "$GITHUB_SHA" \
+            --title "$TITLE $VERSION" \
+            --notes-file notes.md

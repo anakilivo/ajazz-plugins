@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="pi.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    // Property Inspector всех действий: связь с Музыкой (статус, запуск, порт),
+    // для крутилки «Сейчас играет» — ещё вид волны, цвета, текст и шаг перемотки.
+    const NOWPLAYING = "com.anakilivo.streamdock.yamusic.nowplaying";
+    const DEFAULTS = { style: "bars", colors: "cover", text: "full", step: 5 };
+
+    let socket, piUUID, actionUUID;
+    let settings = {};
+    let music = null;
+
+    function sendJSON(msg) {
+      if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(msg));
+    }
+
+    function toPlugin(payload) {
+      sendJSON({ event: "sendToPlugin", action: actionUUID, context: piUUID, payload });
+    }
+
+    function saveSettings(patch) {
+      settings = { ...settings, ...patch };
+      sendJSON({ event: "setSettings", context: piUUID, payload: settings });
+      render();
+    }
+
+    function el(tag, attrs = {}, children = []) {
+      const node = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        if (k === "on") Object.entries(v).forEach(([ev, fn]) => node.addEventListener(ev, fn));
+        else if (k in node) node[k] = v;
+        else node.setAttribute(k, v);
+      }
+      for (const child of [].concat(children)) node.append(child);
+      return node;
+    }
+
+    function row(label, control) {
+      return el("div", { className: "row" }, [el("label", { textContent: label }), control]);
+    }
+
+    function select(key, options) {
+      const value = settings[key] ?? DEFAULTS[key];
+      return el("select", { on: { change: (e) => saveSettings({ [key]: e.target.value }) } },
+        Object.entries(options).map(([v, text]) => el("option", { value: v, textContent: text, selected: v === value })));
+    }
+
+    function statusText() {
+      if (!music) return "Проверка…";
+      switch (music.status) {
+        case "ok": return music.title ? `Играет: ${music.artist ? music.artist + " — " : ""}${music.title}` : "Подключено";
+        case "closed": return "Яндекс Музыка не запущена";
+        case "nodebug": return "Музыка запущена без отладочного порта — нужен перезапуск";
+        default: return "Подключение…";
+      }
+    }
+
+    function render() {
+      if (document.activeElement?.tagName === "INPUT") return;
+      const ok = music?.status === "ok";
+      const knob = actionUUID === NOWPLAYING;
+      const colors = settings.colors ?? DEFAULTS.colors;
+      const custom = colors !== "cover";
+
+      const children = [];
+      if (knob) {
+        children.push(
+          row("Волна", select("style", { bars: "Эквалайзер", mirror: "Зеркальная волна", glow: "Светящаяся линия", none: "Без волны" })),
+          row("Цвета", el("div", { className: "inline" }, [
+            el("select", { on: { change: (e) => saveSettings({ colors: e.target.value === "cover" ? "cover" : "#ffcc00" }) } }, [
+              el("option", { value: "cover", textContent: "Из обложки", selected: !custom }),
+              el("option", { value: "custom", textContent: "Свой цвет", selected: custom }),
+            ]),
+            ...(custom ? [el("input", { type: "color", value: colors, on: { change: (e) => saveSettings({ colors: e.target.value }) } })] : []),
+          ])),
+          row("Текст", select("text", { full: "Трек и артист", title: "Только трек", none: "Без текста" })),
+          row("Перемотка", select("step", { 2: "2 с за щелчок", 5: "5 с за щелчок", 10: "10 с за щелчок", 15: "15 с за щелчок" })),
+          el("p", { className: "hint", textContent: "Поворот — перемотка, нажатие крутилки — пауза, касание экрана — лайк." }),
+        );
+      }
+      children.push(
+        row("Музыка", el("div", { className: "inline" }, [
+          el("span", { className: ok ? "status ok" : "status", textContent: statusText() }),
+          ...(music && !ok && music.status !== "connecting"
+            ? [el("button", { type: "button", textContent: music.status === "nodebug" ? "Перезапустить" : "Запустить", on: { click: () => toPlugin({ type: "launch" }) } })]
+            : []),
+        ])),
+        row("Порт отладки", el("input", {
+          type: "number", min: 1, max: 65535, value: music?.port ?? 9222,
+          on: { change: (e) => { toPlugin({ type: "setPort", port: Number(e.target.value) }); e.target.blur(); } },
+        })),
+        el("p", { className: "hint", textContent:
+          "Плагин управляет Музыкой через отладочный порт: кнопка «Запустить» открывает её с флагом --remote-debugging-port. " +
+          "Волна берёт звук Музыки — при первом запуске macOS спросит разрешение на запись звука." }),
+      );
+      document.getElementById("app").replaceChildren(...children);
+    }
+
+    // Имя функции задано SDK Stream Dock / Elgato.
+    function connectElgatoStreamDeckSocket(port, uuid, registerEvent, _appInfo, actionInfo) {
+      piUUID = uuid;
+      const info = JSON.parse(actionInfo);
+      actionUUID = info.action;
+      settings = { ...DEFAULTS, ...(info.payload?.settings || {}) };
+      render();
+
+      socket = new WebSocket(`ws://127.0.0.1:${port}`);
+      socket.onopen = () => {
+        sendJSON({ event: registerEvent, uuid });
+        toPlugin({ type: "status" });
+      };
+      socket.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (msg.event === "sendToPropertyInspector" && msg.payload?.type === "status") {
+          music = msg.payload;
+          render();
+        }
+      };
+    }
+    window.connectElgatoStreamDeckSocket = connectElgatoStreamDeckSocket;
+    window.connectSocket = connectElgatoStreamDeckSocket;
+  </script>
+</body>
+</html>
