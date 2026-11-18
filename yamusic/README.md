@@ -27,14 +27,16 @@
   на 24 частотные полосы и ~30 раз в секунду отдаёт их плагину. Полоса над крутилкой
   перерисовывается 20 раз в секунду, пока играет музыка (больше устройство не показывает).
   При первом запуске macOS спросит разрешение на запись звука для «Yandex Music Dock».
-- На Windows волны пока нет — остальное работает.
+- На Windows волну даёт `bin/spectrum-helper-win.exe` (C++, `native/win`): WASAPI process loopback
+  захватывает звук только Яндекс Музыки (Windows 10 сборки 20348+ и Windows 11). На более старых
+  Windows помощник берёт весь звук устройства вывода — волна тогда реагирует на любой звук.
 
 ## Сборка
 
 ```
 scripts/build-mac.sh [--install]   помощник (universal), npm, иконки, dist/…-macos.zip;
                                    --install — симлинк в Stream Dock и перезапуск
-scripts/build-win.sh               dist/…-windows.zip (после build-mac.sh)
+scripts/build-win.sh               помощник для Windows (zig), dist/…-windows.zip (после build-mac.sh)
 ```
 
 ## Устройство
@@ -55,6 +57,7 @@ com.anakilivo.streamdock.yamusic.sdPlugin/
     raster.js        SVG → PNG через resvg (WebAssembly)
     actions/         nowplaying.js — крутилка, keys.js — клавиши
   pi/settings.html   настройки
-native/mac/          помощник волны
+native/mac/          помощник волны для macOS (Swift)
+native/win/          помощник волны для Windows (C++)
 scripts/             сборка, иконки
 ```

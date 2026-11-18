@@ -12,10 +12,10 @@ const readline = require("readline");
 const { log } = require("./sdk");
 
 const BANDS = 24;
-const BUNDLE_ID = "ru.yandex.desktop.music";
+// Помощник и как он находит Музыку: на macOS — по bundle ID, на Windows — по имени exe.
 const HELPERS = {
-  darwin: "spectrum-helper-mac",
-  win32: "spectrum-helper-win.exe",
+  darwin: ["spectrum-helper-mac", "ru.yandex.desktop.music"],
+  win32: ["spectrum-helper-win.exe", "Яндекс Музыка.exe"],
 };
 
 class Spectrum {
@@ -32,8 +32,8 @@ class Spectrum {
   }
 
   get helperPath() {
-    const name = HELPERS[process.platform];
-    return name && path.join(__dirname, "..", "bin", name);
+    const helper = HELPERS[process.platform];
+    return helper && path.join(__dirname, "..", "bin", helper[0]);
   }
 
   get available() {
@@ -61,7 +61,7 @@ class Spectrum {
   start() {
     this.restartTimer = null;
     if (!this.available || !this.users.size) return;
-    const child = spawn(this.helperPath, [BUNDLE_ID, String(BANDS)], { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+    const child = spawn(this.helperPath, [HELPERS[process.platform][1], String(BANDS)], { stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
     this.child = child;
     readline.createInterface({ input: child.stdout }).on("line", (line) => this.onLine(line));
     readline.createInterface({ input: child.stderr }).on("line", (line) => log.warn("spectrum helper:", line));

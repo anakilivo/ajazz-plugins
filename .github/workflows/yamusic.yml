@@ -25,7 +25,7 @@ env:
 
 jobs:
   release:
-    # Нужен macOS: Swift-помощник волны (перехват звука Музыки).
+    # Нужен macOS: Swift-помощник волны (перехват звука Музыки); Windows-помощник — через zig.
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +35,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: Install zig
+        run: brew install zig
 
       - name: Version
         id: version
@@ -74,7 +77,7 @@ jobs:
             echo "xattr -dr com.apple.quarantine ~/Library/Application\\ Support/HotSpot/StreamDock/plugins/${PLUGIN_ID}.sdPlugin"
             echo '```'
             echo
-            echo "**Windows** — \`${PLUGIN_ID}-windows.zip\` → \`%APPDATA%\\HotSpot\\StreamDock\\plugins\\\`. Волны на Windows пока нет."
+            echo "**Windows** — \`${PLUGIN_ID}-windows.zip\` → \`%APPDATA%\\HotSpot\\StreamDock\\plugins\\\`."
           } > notes.md
           cat notes.md
 
