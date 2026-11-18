@@ -12,10 +12,20 @@ module.exports = String.raw`
 (() => {
   if (window.__ymDock) window.__ymDock.dispose();
 
-  const bar = () => document.querySelector('[data-test-id="PLAYERBAR_DESKTOP"]');
-  // Сначала в плеере внизу окна (на странице плейлиста тоже есть PLAY_BUTTON), потом где угодно.
+  // Плеер внизу окна или, на экране «Моей волны», свой плеер волны — какой виден.
+  const BARS = ['[data-test-id="PLAYERBAR_DESKTOP"]', '[data-test-id="VIBE_PLAYERBAR"]'];
+  const bar = () => {
+    const bars = BARS.map((s) => document.querySelector(s)).filter(Boolean);
+    return bars.find((el) => el.getClientRects().length) || bars[0] || null;
+  };
+  // Сначала в плеере (на странице плейлиста тоже есть PLAY_BUTTON), потом где угодно.
   const find = (id) => bar()?.querySelector('[data-test-id="' + id + '"]') || document.querySelector('[data-test-id="' + id + '"]');
   const findPrefix = (prefix) => bar()?.querySelector('[data-test-id^="' + prefix + '"]') || document.querySelector('[data-test-id^="' + prefix + '"]');
+  // Ползунок времени: TIMECODE_SLIDER или VIBE_PLAYERBAR_TIMECODE_SLIDER — сам input или обёртка с ним.
+  const timeSlider = () => {
+    const el = bar()?.querySelector('[data-test-id$="TIMECODE_SLIDER"]') || document.querySelector('[data-test-id$="TIMECODE_SLIDER"]');
+    return el?.matches("input") ? el : el?.querySelector('input[type="range"]') || null;
+  };
   const pressed = (el) => el ? el.getAttribute("aria-pressed") === "true" : null;
 
   function cover(metadata) {
@@ -34,9 +44,9 @@ module.exports = String.raw`
 
   function state() {
     const metadata = navigator.mediaSession.metadata;
-    const slider = find("TIMECODE_SLIDER");
+    const slider = timeSlider();
     const shuffle = find("SHUFFLE_BUTTON");
-    const link = find("TRACK_TITLE");
+    const link = find("TRACK_TITLE") || find("VIBE_PLAYERBAR_TRACK_NAME")?.querySelector("a[href]");
     return {
       ready: Boolean(metadata?.title),
       title: metadata?.title || "",
@@ -62,7 +72,7 @@ module.exports = String.raw`
   }
 
   function seek(delta) {
-    const slider = find("TIMECODE_SLIDER");
+    const slider = timeSlider();
     if (!slider) return false;
     const value = Math.max(0, Math.min(Number(slider.max), Number(slider.value) + delta));
     // Ползунок управляется React: значение ставим через нативный setter и шлём события.
