@@ -24,19 +24,40 @@ function loadResvg() {
   return resvg;
 }
 
-async function render(svg) {
+// После падения WebAssembly (нехватка памяти и т. п.) экземпляр испорчен навсегда:
+// выкидываем модуль из кэша require, следующий рендер загрузит свежий.
+function resetResvg() {
+  resvg = null;
+  const dir = path.dirname(require.resolve("@resvg/resvg-wasm"));
+  for (const key of Object.keys(require.cache)) if (key.startsWith(dir)) delete require.cache[key];
+}
+
+/** Рендерит SVG и отдаёт картинку в use(); память WebAssembly освобождаем сразу, не дожидаясь GC. */
+async function render(svg, use) {
   const { Resvg, fontBuffers } = await loadResvg();
-  return new Resvg(svg, { font: { fontBuffers, loadSystemFonts: false, defaultFontFamily: "Arial" } }).render();
+  let resvgInstance, image;
+  try {
+    resvgInstance = new Resvg(svg, { font: { fontBuffers, loadSystemFonts: false, defaultFontFamily: "Arial" } });
+    image = resvgInstance.render();
+    return use(image);
+  } catch (e) {
+    if (e instanceof WebAssembly.RuntimeError) resetResvg();
+    throw e;
+  } finally {
+    try {
+      image?.free();
+      resvgInstance?.free();
+    } catch {}
+  }
 }
 
 async function rasterize(svg) {
-  return Buffer.from((await render(svg)).asPng()).toString("base64");
+  return render(svg, (image) => Buffer.from(image.asPng()).toString("base64"));
 }
 
 /** RGBA-пиксели картинки (для цветов обложки). */
 async function pixels(svg) {
-  const image = await render(svg);
-  return { width: image.width, height: image.height, data: image.pixels };
+  return render(svg, (image) => ({ width: image.width, height: image.height, data: Uint8Array.from(image.pixels) }));
 }
 
 module.exports = { rasterize, pixels };
