@@ -10,7 +10,7 @@
 // репозиториев/организаций (кроме моих); черновики не показываем. «Мои PR» — мои PR в тех же
 // репозиториях (если список пуст — по всему GitHub). PR на ревью скрыт, если:
 //   - я отметил его «посмотрел» на крутилке, или
-//   - я уже оставил ревью на текущий последний коммит.
+//   - я уже оставил ревью на текущий последний коммит или написал комментарий после него.
 // В обоих случаях PR вернётся, когда автор запушит новые коммиты.
 //
 // Токен: из настроек плагина (если введён), иначе из `gh auth token`.
@@ -21,6 +21,8 @@ const { log } = require("./sdk");
 
 const POLL_MS = 60_000;
 const PAGE = 30;
+// Сколько последних комментариев PR просматриваем в поисках моего.
+const COMMENTS = 20;
 
 const GH_CANDIDATES = [
   "gh",
@@ -36,8 +38,9 @@ function prFields(login) {
     number title url isDraft headRefOid updatedAt
     repository { nameWithOwner }
     author { login }
-    commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }
+    commits(last: 1) { nodes { commit { committedDate statusCheckRollup { state } } } }
     reviews(author: ${JSON.stringify(login)}, last: 1) { nodes { commit { oid } } }
+    comments(last: ${COMMENTS}) { nodes { author { login } createdAt } }
   }`;
 }
 
@@ -99,7 +102,15 @@ function overallCi(items) {
   return "none";
 }
 
-function toItem(pr, extra = {}) {
+/** Я ответил на текущую версию PR: ревью на последний коммит или комментарий после него. */
+function reviewedHead(pr, login) {
+  if (pr.reviews?.nodes?.[0]?.commit?.oid === pr.headRefOid) return true;
+  const committedAt = pr.commits?.nodes?.[0]?.commit?.committedDate;
+  const commentedAt = (pr.comments?.nodes || []).filter((c) => c?.author?.login === login).at(-1)?.createdAt;
+  return Boolean(committedAt && commentedAt && commentedAt > committedAt);
+}
+
+function toItem(pr, login, extra = {}) {
   return {
     number: pr.number,
     title: pr.title,
@@ -110,8 +121,7 @@ function toItem(pr, extra = {}) {
     repo: pr.repository?.nameWithOwner || "",
     author: pr.author?.login || "",
     ci: ciState(pr),
-    // Моё последнее ревью сделано на текущий последний коммит.
-    reviewed: pr.reviews?.nodes?.[0]?.commit?.oid === pr.headRefOid,
+    reviewed: reviewedHead(pr, login),
     ...extra,
   };
 }
@@ -248,8 +258,8 @@ class GitHub extends EventEmitter {
       const data = await this.graphql(token, buildQuery(login, this.settings.repos));
 
       const byUrl = new Map();
-      for (const pr of nodes(data.requested)) byUrl.set(pr.url, toItem(pr, { requested: true }));
-      for (const pr of nodes(data.team)) if (!byUrl.has(pr.url)) byUrl.set(pr.url, toItem(pr, { requested: false }));
+      for (const pr of nodes(data.requested)) byUrl.set(pr.url, toItem(pr, login, { requested: true }));
+      for (const pr of nodes(data.team)) if (!byUrl.has(pr.url)) byUrl.set(pr.url, toItem(pr, login, { requested: false }));
       // Сначала PR, где ревью запросили явно, затем — свежие по обновлению.
       this.reviewAll = [...byUrl.values()].sort((a, b) =>
         Number(b.requested) - Number(a.requested) || b.updatedAt.localeCompare(a.updatedAt));
@@ -260,7 +270,7 @@ class GitHub extends EventEmitter {
         this.updateSettings({ dismissed }, { refetch: false });
       }
 
-      const mine = nodes(data.mine).map((pr) => toItem(pr));
+      const mine = nodes(data.mine).map((pr) => toItem(pr, login));
       log.info("fetched: review", this.reviewAll.length, "mine", mine.length,
         "since last", this.fetchedAt ? `${Math.round((Date.now() - this.fetchedAt) / 1000)}s` : "-");
       this.fetchedAt = Date.now();
